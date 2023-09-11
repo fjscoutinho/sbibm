@@ -9,7 +9,7 @@ import os
 import sys
 from shutil import rmtree
 
-from setuptools import Command, find_packages, setup
+from setuptools import find_packages, setup, Command
 
 NAME = "sbibm"
 DESCRIPTION = "Simulation-based inference benchmark"
@@ -34,6 +34,8 @@ REQUIRED = [
     "scikit-learn",
     "torch>=1.8.0",
     "tqdm",
+    "tensorflow",
+    "keras",
 ]
 
 EXTRAS = {

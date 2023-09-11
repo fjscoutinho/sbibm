@@ -4,13 +4,17 @@ from typing import Optional, Tuple
 
 import torch
 from sbi import inference as inference
+from sbi.neural_nets.embedding_nets import FCEmbedding, PermutationInvariantEmbedding
 from sbi.utils.get_nn_models import posterior_nn
+from torch import nn
 
 from sbibm.algorithms.sbi.utils import (
     wrap_posterior,
     wrap_prior_dist,
     wrap_simulator_fn,
 )
+from sbibm.tasks.ddm.task import DDM
+from sbibm.tasks.ddm.utils import map_x_to_two_D
 from sbibm.tasks.task import Task
 
 
@@ -30,9 +34,20 @@ def run(
     z_score_x: str = "independent",
     z_score_theta: str = "independent",
     max_num_epochs: Optional[int] = 2**31 - 1,
+    trial_net_kwargs: Optional[dict] = dict(
+        input_dim=2,
+        output_dim=12,
+        num_hiddens=20,
+        num_layers=2,
+    ),
+    perm_net_kwargs: Optional[dict] = dict(
+        combining_operation="mean",
+        num_layers=2,
+        num_hiddens=20,
+        output_dim=12,
+    ),
 ) -> Tuple[torch.Tensor, int, Optional[torch.Tensor]]:
-    """Runs (S)NPE from `sbi`
-
+    """Runs (S)NPE for iid data from `sbi`
     Args:
         task: Task instance
         num_samples: Number of samples to generate from posterior
@@ -49,7 +64,6 @@ def run(
         z_score_x: Whether to z-score x
         z_score_theta: Whether to z-score theta
         max_num_epochs: Maximum number of epochs
-
     Returns:
         Samples from posterior, number of simulator calls, log probability of true params if computable
     """
@@ -77,7 +91,7 @@ def run(
     if observation is None:
         observation = task.get_observation(num_observation)
 
-    simulator = task.get_simulator(max_calls=num_simulations)
+    simulator = task.get_simulator()
 
     transforms = task._get_transforms(automatic_transforms_enabled)["parameters"]
 
@@ -85,11 +99,27 @@ def run(
         prior = wrap_prior_dist(prior, transforms)
         simulator = wrap_simulator_fn(simulator, transforms)
 
+    # DDM specific.
+    if isinstance(task, DDM):
+        observation = map_x_to_two_D(observation)
+    num_trials = observation.shape[0]
+
+    # embedding net needed?
+    if num_trials > 1:
+        embedding_net = PermutationInvariantEmbedding(
+            trial_net=FCEmbedding(**trial_net_kwargs),
+            trial_net_output_dim=trial_net_kwargs["output_dim"],
+            **perm_net_kwargs,
+        )
+    else:
+        embedding_net = nn.Identity()
+
     density_estimator_fun = posterior_nn(
         model=neural_net.lower(),
         hidden_features=hidden_features,
         z_score_x=z_score_x,
         z_score_theta=z_score_theta,
+        embedding_net=embedding_net,
     )
 
     inference_method = inference.SNPE_C(prior, density_estimator=density_estimator_fun)
@@ -97,12 +127,24 @@ def run(
     proposal = prior
 
     for _ in range(num_rounds):
-        theta, x = inference.simulate_for_sbi(
-            simulator,
-            proposal,
-            num_simulations=num_simulations_per_round,
-            simulation_batch_size=simulation_batch_size,
-        )
+        theta = proposal.sample((num_simulations_per_round,))
+
+        if num_trials > 1:
+            # copy theta for iid trials
+            theta_per_trial = theta.tile(num_trials).reshape(
+                theta.shape[0] * num_trials, -1
+            )
+
+            x = simulator(theta_per_trial)
+            if isinstance(task, DDM):
+                x = map_x_to_two_D(x)
+
+            # rearrange to have trials as separate dim
+            x = x.reshape(num_simulations_per_round, num_trials, -1)
+        else:
+            x = simulator(theta)
+            if isinstance(task, DDM):
+                x = map_x_to_two_D(x)
 
         density_estimator = inference_method.append_simulations(
             theta, x, proposal=proposal
@@ -121,7 +163,7 @@ def run(
 
     posterior = wrap_posterior(posteriors[-1], transforms)
 
-    assert simulator.num_simulations == num_simulations
+    # assert simulator.num_simulations == num_simulations
 
     samples = posterior.sample((num_samples,)).detach()
 

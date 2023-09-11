@@ -55,17 +55,7 @@ def sample_blobs_different(
     X[:, 1] += rs.randint(cols, size=n)
     Y_row = rs.randint(rows, size=n)
     Y_col = rs.randint(cols, size=n)
-    locs = [
-        [0, 0],
-        [0, 1],
-        [0, 2],
-        [1, 0],
-        [1, 1],
-        [1, 2],
-        [2, 0],
-        [2, 1],
-        [2, 2],
-    ]
+    locs = [[0, 0], [0, 1], [0, 2], [1, 0], [1, 1], [1, 2], [2, 0], [2, 1], [2, 2]]
 
     # sigma matrix
     sigma_mx_2 = np.zeros([9, 2, 2])

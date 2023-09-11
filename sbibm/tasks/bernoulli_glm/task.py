@@ -14,17 +14,16 @@ from sbibm.utils.torch import get_default_device
 
 class BernoulliGLM(Task):
     def __init__(self, summary="sufficient"):
-        """Bernoulli GLM"""
+        """Bernoulli GLM
+        """
         self.summary = summary
         if self.summary == "sufficient":
             dim_data = 10
-            name = "bernoulli_glm"
             name_display = "Bernoulli GLM"
             self.raw = False
         elif self.summary == "raw":
             dim_data = 100
             self.raw = True
-            name = "bernoulli_glm_raw"
             name_display = "Bernoulli GLM Raw"
         else:
             raise NotImplementedError
@@ -32,7 +31,7 @@ class BernoulliGLM(Task):
         super().__init__(
             dim_parameters=10,
             dim_data=dim_data,
-            name=name,
+            name=Path(__file__).parent.name,
             name_display=name_display,
             num_simulations=[1000, 10000, 100000, 1000000],
             num_posterior_samples=10000,
@@ -57,7 +56,6 @@ class BernoulliGLM(Task):
 
         self.prior_params = {"loc": torch.zeros((M + 1,)), "precision_matrix": Binv}
         self.prior_dist = pdist.MultivariateNormal(**self.prior_params)
-        self.prior_dist.set_default_validate_args(False)
 
     def get_prior(self) -> Callable:
         def prior(num_samples=1):
@@ -69,8 +67,8 @@ class BernoulliGLM(Task):
         """Get function returning samples from simulator given parameters
 
         Args:
-            max_calls: Maximum number of function calls. Additional calls will
-                result in SimulationBudgetExceeded exceptions. Defaults to None
+            max_calls: Maximum number of function calls. Additional calls will 
+                result in SimulationBudgetExceeded exceptions. Defaults to None 
                 for infinite budget
 
         Return:
@@ -118,7 +116,8 @@ class BernoulliGLM(Task):
         return Simulator(task=self, simulator=simulator, max_calls=max_calls)
 
     def get_observation(self, num_observation: int) -> torch.Tensor:
-        """Get observed data for a given observation number"""
+        """Get observed data for a given observation number
+        """
         if not self.raw:
             path = (
                 self.path
@@ -147,9 +146,7 @@ class BernoulliGLM(Task):
             return data.reshape(-1, self.dim_data)
 
     def _sample_reference_posterior(
-        self,
-        num_samples: int,
-        num_observation: Optional[int] = None,
+        self, num_samples: int, num_observation: Optional[int] = None,
     ) -> torch.Tensor:
         from pypolyagamma import PyPolyaGamma
         from tqdm import tqdm

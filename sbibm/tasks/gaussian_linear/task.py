@@ -42,7 +42,6 @@ class GaussianLinear(Task):
         }
 
         self.prior_dist = pdist.MultivariateNormal(**self.prior_params)
-        self.prior_dist.set_default_validate_args(False)
 
         self.simulator_params = {
             "precision_matrix": torch.inverse(
@@ -113,8 +112,7 @@ class GaussianLinear(Task):
                     self.simulator_params["precision_matrix"], observation.reshape(-1)
                 )
                 + torch.matmul(
-                    self.prior_params["precision_matrix"],
-                    self.prior_params["loc"],
+                    self.prior_params["precision_matrix"], self.prior_params["loc"],
                 )
             ),
         )
@@ -140,13 +138,12 @@ class GaussianLinear(Task):
             num_observation: Observation number
             observation: Instead of passing an observation number, an observation may be
                 passed directly
-
+        
         Returns:
             Samples from reference posterior
         """
         posterior = self._get_reference_posterior(
-            num_observation=num_observation,
-            observation=observation,
+            num_observation=num_observation, observation=observation,
         )
 
         return posterior.sample((num_samples,))

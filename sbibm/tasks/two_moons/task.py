@@ -15,7 +15,8 @@ from sbibm.utils.pyro import make_log_prob_grad_fn
 
 class TwoMoons(Task):
     def __init__(self):
-        """Two Moons"""
+        """Two Moons
+        """
 
         # Observation seeds to use when generating ground truth
         observation_seeds = [
@@ -50,7 +51,6 @@ class TwoMoons(Task):
             "high": +prior_bound * torch.ones((self.dim_parameters,)),
         }
         self.prior_dist = pdist.Uniform(**self.prior_params).to_event(1)
-        self.prior_dist.set_default_validate_args(False)
 
         self.simulator_params = {
             "a_low": -math.pi / 2.0,
@@ -70,8 +70,8 @@ class TwoMoons(Task):
         """Get function returning samples from simulator given parameters
 
         Args:
-            max_calls: Maximum number of function calls. Additional calls will
-                result in SimulationBudgetExceeded exceptions. Defaults to None
+            max_calls: Maximum number of function calls. Additional calls will 
+                result in SimulationBudgetExceeded exceptions. Defaults to None 
                 for infinite budget
 
         Return:
@@ -131,10 +131,7 @@ class TwoMoons(Task):
         return x - torch.cat((-torch.abs(z0), z1), dim=1)
 
     def _likelihood(
-        self,
-        parameters: torch.Tensor,
-        data: torch.Tensor,
-        log: bool = True,
+        self, parameters: torch.Tensor, data: torch.Tensor, log: bool = True,
     ) -> torch.Tensor:
         if parameters.ndim == 1:
             parameters = parameters.reshape(1, -1)
@@ -156,16 +153,12 @@ class TwoMoons(Task):
         )
 
         if len(torch.where(u < 0.0)[0]) > 0:
-            L[torch.where(u < 0.0)[0]] = -torch.tensor(math.inf)
+            L[torch.where(u < 0.0)[0]] = -torch.tensor(math.inf) if log else 0.0
 
         return L if log else torch.exp(L)
 
-    def _get_transforms(
-        self,
-        *args,
-        **kwargs: Any,
-    ) -> Dict[str, Any]:
-        return {"parameters": torch.distributions.transforms.IndependentTransform(torch.distributions.transforms.identity_transform, 1) }
+    def _get_transforms(self, *args, **kwargs: Any,) -> Dict[str, Any]:
+        return {"parameters": torch.distributions.transforms.identity_transform}
 
     def _get_log_prob_fn(
         self,
@@ -177,8 +170,8 @@ class TwoMoons(Task):
 
         The potential function returns the unnormalized negative log
         posterior probability, and is useful to establish and verify
-        the reference posterior.
-
+        the reference posterior. 
+        
         Args:
             num_observation: Observation number
             observation: Instead of passing an observation number, an observation may be
@@ -245,7 +238,7 @@ class TwoMoons(Task):
             num_samples: Number of samples to generate
             num_observation: Observation number
             observation: Observed data, if None, will be loaded using `num_observation`
-
+        
         Returns:
             Samples from reference posterior
         """

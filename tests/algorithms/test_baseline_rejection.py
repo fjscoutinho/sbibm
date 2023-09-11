@@ -34,6 +34,7 @@ def test_rejection(
 
 
 def test_rejection_with_proposal(
+    plt,
     task_name="gaussian_linear_uniform",
     num_observation=1,
     num_samples=10000,

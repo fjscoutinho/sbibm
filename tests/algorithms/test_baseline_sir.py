@@ -1,4 +1,4 @@
-import pytest  # noqa
+import pytest
 import torch
 from sbi.analysis import pairplot
 
@@ -9,6 +9,7 @@ from sbibm.metrics.c2st import c2st
 
 
 def test_sir_with_proposal(
+    plt,
     task_name="gaussian_linear_uniform",
     num_observation=1,
     num_samples=10000,

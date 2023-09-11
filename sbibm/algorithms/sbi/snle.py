@@ -31,8 +31,7 @@ def run(
         "num_chains": 100,
         "thin": 10,
         "warmup_steps": 25,
-        # NOTE: resample is the init strategy used for the main paper results.
-        "init_strategy": "resample",
+        "init_strategy": "sir",
         # NOTE: sir kwargs changed: num_candidate_samples = num_batches * batch_size
         "init_strategy_parameters": {
             "num_candidate_samples": 10000,
@@ -40,10 +39,9 @@ def run(
     },
     z_score_x: str = "independent",
     z_score_theta: str = "independent",
-    max_num_epochs: int = 2**31 - 1,
+    max_num_epochs: Optional[int] = 2**31 - 1,
 ) -> Tuple[torch.Tensor, int, Optional[torch.Tensor]]:
     """Runs (S)NLE from `sbi`
-
     Args:
         task: Task instance
         num_observation: Observation number to load, alternative to `observation`
@@ -61,7 +59,6 @@ def run(
         z_score_x: Whether to z-score x
         z_score_theta: Whether to z-score theta
         max_num_epochs: Maximum number of epochs
-
     Returns:
         Samples from posterior, number of simulator calls, log probability of true params if computable
     """
@@ -91,9 +88,7 @@ def run(
 
     simulator = task.get_simulator(max_calls=num_simulations)
 
-    transforms = task._get_transforms(automatic_transforms_enabled)[
-        "parameters"
-    ]
+    transforms = task._get_transforms(automatic_transforms_enabled)["parameters"]
     if automatic_transforms_enabled:
         prior = wrap_prior_dist(prior, transforms)
         simulator = wrap_simulator_fn(simulator, transforms)
@@ -129,30 +124,18 @@ def run(
             show_train_summary=True,
             max_num_epochs=max_num_epochs,
         )
-
-        (
-            potential_fn,
-            theta_transform,
-        ) = inference.likelihood_estimator_based_potential(
-            density_estimator,
-            prior,
-            observation,
-            # NOTE: disable transform if sbibm does it. will return IdentityTransform.
-            enable_transform=not automatic_transforms_enabled,
-        )
-        posterior = inference.MCMCPosterior(
-            potential_fn=potential_fn,
-            proposal=prior,  # proposal for init_strategy
-            theta_transform=theta_transform,
-            method=mcmc_method,
-            **mcmc_parameters,
-        )
-        # Change init_strategy to latest_sample after second round.
         if r > 1:
-            posterior.init_strategy = "latest_sample"
-            # copy init params from round 2 posterior.
-            posterior._mcmc_init_params = posteriors[-1]._mcmc_init_params
+            mcmc_parameters["init_strategy"] = "latest_sample"
 
+        posterior = inference_method.build_posterior(
+            density_estimator=density_estimator,
+            sample_with="mcmc",
+            mcmc_method=mcmc_method,
+            mcmc_parameters=mcmc_parameters,
+        )
+        # Copy hyperparameters, e.g., mcmc_init_samples for "latest_sample" strategy.
+        if r > 0:
+            posterior.copy_hyperparameters_from(posteriors[-1])
         proposal = posterior.set_default_x(observation)
         posteriors.append(posterior)
 

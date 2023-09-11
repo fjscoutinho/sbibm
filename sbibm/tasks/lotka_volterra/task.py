@@ -81,7 +81,6 @@ class LotkaVolterra(Task):
             "scale": torch.tensor([sigma_p, sigma_p, sigma_p, sigma_p]),
         }
         self.prior_dist = pdist.LogNormal(**self.prior_params).to_event(1)
-        self.prior_dist.set_default_validate_args(False)
 
         self.u0 = torch.tensor([30.0, 1.0])
         self.tspan = torch.tensor([0.0, days])
@@ -107,7 +106,8 @@ class LotkaVolterra(Task):
         )
 
     def get_labels_parameters(self) -> List[str]:
-        """Get list containing parameter labels"""
+        """Get list containing parameter labels
+        """
         return [r"$\alpha$", r"$\beta$", r"$\gamma$", r"$\delta$"]
 
     def get_prior(self) -> Callable:
@@ -116,10 +116,7 @@ class LotkaVolterra(Task):
 
         return prior
 
-    def get_simulator(
-        self,
-        max_calls: Optional[int] = None,
-    ) -> Simulator:
+    def get_simulator(self, max_calls: Optional[int] = None,) -> Simulator:
         """Get function returning samples from simulator given parameters
 
         Args:
@@ -184,7 +181,8 @@ class LotkaVolterra(Task):
         return Simulator(task=self, simulator=simulator, max_calls=max_calls)
 
     def unflatten_data(self, data: torch.Tensor) -> torch.Tensor:
-        """Unflattens data into multiple observations"""
+        """Unflattens data into multiple observations
+        """
         if self.summary is None:
             return data.reshape(-1, 2, int(self.dim_data / 2))
         else:

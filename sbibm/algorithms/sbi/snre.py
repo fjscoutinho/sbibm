@@ -11,6 +11,8 @@ from sbibm.algorithms.sbi.utils import (
     wrap_prior_dist,
     wrap_simulator_fn,
 )
+from sbibm.tasks.ddm.task import DDM
+from sbibm.tasks.ddm.utils import map_x_to_two_D
 from sbibm.tasks.task import Task
 
 
@@ -41,10 +43,9 @@ def run(
     z_score_x: str = "independent",
     z_score_theta: str = "independent",
     variant: str = "B",
-    max_num_epochs: int = 2**31 - 1,
+    max_num_epochs: Optional[int] = 2**31 - 1,
 ) -> Tuple[torch.Tensor, int, Optional[torch.Tensor]]:
     """Runs (S)NRE from `sbi`
-
     Args:
         task: Task instance
         num_samples: Number of samples to generate from posterior
@@ -64,7 +65,6 @@ def run(
         z_score_theta: Whether to z-score theta
         variant: Can be used to switch between SNRE-A (AALR) and -B (SRE)
         max_num_epochs: Maximum number of epochs
-
     Returns:
         Samples from posterior, number of simulator calls, log probability of true params if computable
     """
@@ -92,11 +92,13 @@ def run(
     if observation is None:
         observation = task.get_observation(num_observation)
 
+    # DDM specific.
+    if isinstance(task, DDM):
+        observation = map_x_to_two_D(observation)
+
     simulator = task.get_simulator(max_calls=num_simulations)
 
-    transforms = task._get_transforms(automatic_transforms_enabled)[
-        "parameters"
-    ]
+    transforms = task._get_transforms(automatic_transforms_enabled)["parameters"]
     if automatic_transforms_enabled:
         prior = wrap_prior_dist(prior, transforms)
         simulator = wrap_simulator_fn(simulator, transforms)
@@ -109,10 +111,10 @@ def run(
     )
     if variant == "A":
         inference_class = inference.SNRE_A
-        training_kwargs = {}
+        inference_method_kwargs = {}
     elif variant == "B":
         inference_class = inference.SNRE_B
-        training_kwargs = {"num_atoms": num_atoms}
+        inference_method_kwargs = {"num_atoms": num_atoms}
     else:
         raise NotImplementedError
 
@@ -128,8 +130,11 @@ def run(
             num_simulations=num_simulations_per_round,
             simulation_batch_size=simulation_batch_size,
         )
+        # Map to (rts, choices) for DDM.
+        if isinstance(task, DDM):
+            x = map_x_to_two_D(x)
 
-        ratio_estimator = inference_method.append_simulations(
+        density_estimator = inference_method.append_simulations(
             theta, x, from_round=r
         ).train(
             training_batch_size=training_batch_size,
@@ -137,31 +142,18 @@ def run(
             discard_prior_samples=False,
             show_train_summary=True,
             max_num_epochs=max_num_epochs,
-            **training_kwargs,
+            **inference_method_kwargs,
         )
-
-        (
-            potential_fn,
-            theta_transform,
-        ) = inference.ratio_estimator_based_potential(
-            ratio_estimator,
-            prior,
-            observation,
-            # NOTE: disable transform if sbibm does it. will return IdentityTransform.
-            enable_transform=not automatic_transforms_enabled,
-        )
-        posterior = inference.MCMCPosterior(
-            potential_fn=potential_fn,
-            proposal=prior,  # proposal for init_strategy
-            theta_transform=theta_transform,
-            method=mcmc_method,
-            **mcmc_parameters,
-        )
-        # Change init_strategy to latest_sample after second round.
         if r > 1:
-            posterior.init_strategy = "latest_sample"
-            # copy init params from round 2 posterior.
-            posterior._mcmc_init_params = posteriors[-1]._mcmc_init_params
+            mcmc_parameters["init_strategy"] = "latest_sample"
+        posterior = inference_method.build_posterior(
+            density_estimator,
+            mcmc_method=mcmc_method,
+            mcmc_parameters=mcmc_parameters,
+        )
+        # Copy hyperparameters, e.g., mcmc_init_samples for "latest_sample" strategy.
+        if r > 0:
+            posterior.copy_hyperparameters_from(posteriors[-1])
         proposal = posterior.set_default_x(observation)
         posteriors.append(posterior)
 

@@ -7,19 +7,19 @@ from typing import Optional, Tuple
 import numpy as np
 import pyabc
 import torch
-from sbi.utils import get_kde
 
 import sbibm
-from sbibm.algorithms.sbi.utils import clip_int, get_sass_transform, run_lra
+from sbibm.algorithms.sbi.utils import get_sass_transform, run_lra, clip_int
 from sbibm.tasks.task import Task
+from sbibm.utils.kde import get_kde
 from sbibm.utils.torch import sample_with_weights
 
 from .pyabc_utils import (
     PyAbcSimulator,
     get_distance,
     run_pyabc,
-    run_rejection_abc,
     wrap_prior,
+    run_rejection_abc,
 )
 
 

@@ -74,7 +74,7 @@ prior = task.get_prior()
 simulator = task.get_simulator()
 ```
 
-If we call `prior()` we get a single draw from the prior distribution. `num_samples` can be provided as an optional argument. The following would generate 100 samples from the simulator:
+If we call `prior()` we get a single draw from the prior distribution. `num_samples` can be provided as an optional argument. The following would generate 100 samples from the simulator: 
 ```python
 thetas = prior(num_samples=100)
 xs = simulator(thetas)
@@ -100,12 +100,12 @@ task.name                   # name: slcp
 task.name_display           # name_display: SLCP
 ```
 
-Finally, if you want to have a look at the source code of the task, take a look in `sbibm/tasks/slcp/task.py`. If you wanted to implement a new task, we would recommend modelling them after the existing ones. You will see that each task has a private `_setup` method that was used to generate the reference posterior samples.
+Finally, if you want to have a look at the source code of the task, take a look in `sbibm/tasks/slcp/task.py`. If you wanted to implement a new task, we would recommend modelling them after the existing ones. You will see that each task has a private `_setup` method that was used to generate the reference posterior samples. 
 
 
 ## Algorithms
 
-As mentioned in the intro, `sbibm` wraps a number of third-party packages to run various algorithms. We found it easiest to give each algorithm the same interface: In general, each algorithm specifies a `run` function that gets `task` and hyperparameters as arguments, and eventually returns the required `num_posterior_samples`. That way, one can simply import the run function of an algorithm, tune it on any given task, and return metrics on the returned samples. Wrappers for external toolboxes implementing algorithms are in the subfolder `sbibm/algorithms`. Currently, integrations with [`sbi`](https://www.mackelab.org/sbi/), [`pyabc`](https://pyabc.readthedocs.io), [`pyabcranger`](https://github.com/diyabc/abcranger), as well as an experimental integration with [`elfi`](https://github.com/elfi-dev/elfi) are provided.
+As mentioned in the intro, `sbibm` wraps a number of third-party packages to run various algorithms. We found it easiest to give each algorithm the same interface: In general, each algorithm specifies a `run` function that gets `task` and hyperparameters as arguments, and eventually returns the required `num_posterior_samples`. That way, one can simply import the run function of an algorithm, tune it on any given task, and return metrics on the returned samples. Wrappers for external toolboxes implementing algorithms are in the subfolder `sbibm/algorithms`. Currently, integrations with [`sbi`](https://www.mackelab.org/sbi/), [`pyabc`](https://pyabc.readthedocs.io), [`pyabcranger`](https://github.com/diyabc/abcranger), as well as an experimental integration with [`elfi`](https://github.com/diyabc/abcranger) are provided.
 
 
 ## Metrics
@@ -153,34 +153,24 @@ fig = fig_posterior(task_name="two_moons", observation=1, samples=[algorithm_sam
 We host results and the code for reproducing the experiments of the manuscript in a seperate repository at [github.com/sbi-benchmark/results](https://github.com/sbi-benchmark/results/tree/main/benchmarking_sbi): This includes the pipeline to reproduce the manuscripts' experiments as well as dataframes for new comparisons.
 
 
-## Corrections
-
-- [`sbibm v1.1.0` contains a bug fix for the Gaussian Mixture task](https://github.com/sbi-benchmark/sbibm/releases/tag/v1.1.0). We will issue an update of the results.
-
-
 ## Citation
 
 The manuscript is [available through PMLR](http://proceedings.mlr.press/v130/lueckmann21a.html):
 
 ```bibtex
- @InProceedings{lueckmann2021benchmarking,
+ @InProceedings{lueckmann2021benchmarking, 
   title     = {Benchmarking Simulation-Based Inference},
-  author    = {Lueckmann, Jan-Matthis and Boelts, Jan and Greenberg, David and Goncalves, Pedro and Macke, Jakob},
-  booktitle = {Proceedings of The 24th International Conference on Artificial Intelligence and Statistics},
-  pages     = {343--351},
-  year      = {2021},
-  editor    = {Banerjee, Arindam and Fukumizu, Kenji},
-  volume    = {130},
-  series    = {Proceedings of Machine Learning Research},
-  month     = {13--15 Apr},
+  author    = {Lueckmann, Jan-Matthis and Boelts, Jan and Greenberg, David and Goncalves, Pedro and Macke, Jakob}, 
+  booktitle = {Proceedings of The 24th International Conference on Artificial Intelligence and Statistics}, 
+  pages     = {343--351}, 
+  year      = {2021}, 
+  editor    = {Banerjee, Arindam and Fukumizu, Kenji}, 
+  volume    = {130}, 
+  series    = {Proceedings of Machine Learning Research}, 
+  month     = {13--15 Apr}, 
   publisher = {PMLR}
 }  
 ```
-
-
-## Support
-
-This work was supported by the German Research Foundation (DFG; SFB 1233 PN 276693517, SFB 1089, SPP 2041, Germany’s Excellence Strategy – EXC number 2064/1 PN 390727645) and the German Federal Ministry of Education and Research (BMBF; project ’[ADIMEM](https://fit.uni-tuebingen.de/Project/Details?id=9199)’, FKZ 01IS18052 A-D).
 
 
 ## License

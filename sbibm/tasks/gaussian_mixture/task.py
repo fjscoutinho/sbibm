@@ -12,9 +12,7 @@ from sbibm.tasks.task import Task
 
 class GaussianMixture(Task):
     def __init__(
-        self,
-        dim: int = 2,
-        prior_bound: float = 10.0,
+        self, dim: int = 2, prior_bound: float = 10.0,
     ):
         """Gaussian Mixture.
 
@@ -42,7 +40,6 @@ class GaussianMixture(Task):
         }
 
         self.prior_dist = pdist.Uniform(**self.prior_params).to_event(1)
-        self.prior_dist.set_default_validate_args(False)
 
         self.simulator_params = {
             "mixture_locs_factor": torch.tensor([1.0, 1.0]),
@@ -69,20 +66,16 @@ class GaussianMixture(Task):
         """
 
         def simulator(parameters):
-            # Sample mixture index for each parameter in batch
             idx = pyro.sample(
                 "mixture_idx",
-                pdist.Categorical(
-                    probs=self.simulator_params["mixture_weights"]
-                ).expand_by([parameters.shape[0]]),
-            ).unsqueeze(1)
-
-            # Select loc and scales according to mixture index
-            loc = self.simulator_params["mixture_locs_factor"][idx] * parameters
-            scale = self.simulator_params["mixture_scales"][idx]
-
+                pdist.Categorical(probs=self.simulator_params["mixture_weights"]),
+            )
             return pyro.sample(
-                "data", pdist.Normal(loc=loc, scale=scale).to_event(1)
+                "data",
+                pdist.Normal(
+                    loc=self.simulator_params["mixture_locs_factor"][idx] * parameters,
+                    scale=self.simulator_params["mixture_scales"][idx],
+                ),
             )
 
         return Simulator(task=self, simulator=simulator, max_calls=max_calls)
@@ -102,7 +95,7 @@ class GaussianMixture(Task):
             num_observation: Observation number
             observation: Instead of passing an observation number, an observation may be
                 passed directly
-
+        
         Returns:
             Samples from reference posterior
         """

@@ -12,17 +12,16 @@ from sbibm.utils.io import get_tensor_from_csv, save_tensor_to_csv
 
 class SLCP(Task):
     def __init__(self, distractors: bool = False):
-        """SLCP"""
+        """SLCP
+        """
         self.num_data = 4
         self.distractors = distractors
 
         if not self.distractors:
             dim_data = 2 * self.num_data
-            name = "slcp"
             name_display = "SLCP"
         else:
             dim_data = 100
-            name = "slcp_distractors"
             name_display = "SLCP Distractors"
 
         # Observation seeds to use when generating ground truth
@@ -43,7 +42,7 @@ class SLCP(Task):
         super().__init__(
             dim_parameters=5,
             dim_data=dim_data,
-            name=name,
+            name=Path(__file__).parent.name,
             name_display=name_display,
             num_observations=10,
             num_posterior_samples=10000,
@@ -58,7 +57,6 @@ class SLCP(Task):
             "high": torch.tensor([+3.0 for _ in range(self.dim_parameters)]),
         }
         self.prior_dist = pdist.Uniform(**self.prior_params).to_event(1)
-        self.prior_dist.set_default_validate_args(False)
 
     def get_prior(self) -> Callable:
         def prior(num_samples=1):
@@ -104,12 +102,7 @@ class SLCP(Task):
 
             data_dist = pdist.MultivariateNormal(
                 m.unsqueeze(1).float(), S.unsqueeze(1).float()
-            ).expand(
-                (
-                    num_samples,
-                    self.num_data,
-                )
-            )
+            ).expand((num_samples, self.num_data,))
 
             if not self.distractors:
                 return pyro.sample("data", data_dist)
@@ -130,7 +123,8 @@ class SLCP(Task):
         return Simulator(task=self, simulator=simulator, max_calls=max_calls)
 
     def get_observation(self, num_observation: int) -> torch.Tensor:
-        """Get observed data for a given observation number"""
+        """Get observed data for a given observation number
+        """
         if not self.distractors:
             path = (
                 self.path
@@ -184,7 +178,8 @@ class SLCP(Task):
             )
 
     def unflatten_data(self, data: torch.Tensor) -> torch.Tensor:
-        """Unflattens data into multiple observations"""
+        """Unflattens data into multiple observations
+        """
         if not self.distractors:
             return data.reshape(-1, self.num_data, 2)
         else:
@@ -260,14 +255,9 @@ class SLCP(Task):
         ]
         scale_tril = torch.from_numpy(3 * np.array(cholesky_factors))
 
-        mix = pdist.Categorical(
-            torch.ones(
-                n_noise_comps,
-            )
-        )
+        mix = pdist.Categorical(torch.ones(n_noise_comps,))
         comp = pdist.Independent(
-            pdist.MultivariateStudentT(df=2, loc=loc, scale_tril=scale_tril),
-            0,
+            pdist.MultivariateStudentT(df=2, loc=loc, scale_tril=scale_tril), 0,
         )
         gmm = pdist.MixtureSameFamily(mix, comp)
         torch.save(gmm, "files/gmm.torch")

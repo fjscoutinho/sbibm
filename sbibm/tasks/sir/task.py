@@ -85,7 +85,6 @@ class SIR(Task):
             "scale": torch.tensor([0.5, 0.2]),
         }
         self.prior_dist = pdist.LogNormal(**self.prior_params).to_event(1)
-        self.prior_dist.set_default_validate_args(False)
 
         self.u0 = torch.tensor([N - I0 - R0, I0, R0])
         self.tspan = torch.tensor([0.0, days])
@@ -111,7 +110,8 @@ class SIR(Task):
         )
 
     def get_labels_parameters(self) -> List[str]:
-        """Get list containing parameter labels"""
+        """Get list containing parameter labels
+        """
         return [r"$\beta$", r"$\gamma$"]
 
     def get_prior(self) -> Callable:
@@ -120,10 +120,7 @@ class SIR(Task):
 
         return prior
 
-    def get_simulator(
-        self,
-        max_calls: Optional[int] = None,
-    ) -> Simulator:
+    def get_simulator(self, max_calls: Optional[int] = None,) -> Simulator:
         """Get function returning samples from simulator given parameters
 
         Args:
@@ -184,7 +181,8 @@ class SIR(Task):
         return Simulator(task=self, simulator=simulator, max_calls=max_calls)
 
     def unflatten_data(self, data: torch.Tensor) -> torch.Tensor:
-        """Unflattens data into multiple observations"""
+        """Unflattens data into multiple observations
+        """
         if self.summary is None:
             return data.reshape(-1, 3, int(self.dim_data / 3))
         else:

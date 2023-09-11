@@ -18,7 +18,8 @@ from pyro.poutine.subsample_messenger import _Subsample
 from pyro.util import check_site_shape, ignore_jit_warnings
 from torch.autograd import grad
 from torch.distributions import biject_to
-from torch.distributions.transforms import IndependentTransform
+
+from sbibm.utils.torch import get_log_abs_det_jacobian
 
 
 def get_log_prob_fn(
@@ -98,7 +99,7 @@ def get_log_prob_fn(
         if automatic_transform_enabled:
             transforms[name] = biject_to(fn.support).inv
         else:
-            transforms[name] = dist.transforms.IndependentTransform(dist.transforms.identity_transform, 1)
+            transforms[name] = dist.transforms.identity_transform
 
     if implementation == "pyro":
         trace_prob_evaluator = TraceEinsumEvaluator(
@@ -206,9 +207,11 @@ class _LPMaker:
         model_trace = poutine.trace(cond_model).get_trace(
             *self.model_args, **self.model_kwargs
         )
-        log_joint = torch.atleast_1d(self.trace_prob_evaluator.log_prob(model_trace))
+        log_joint = self.trace_prob_evaluator.log_prob(model_trace)
         for name, t in self.transforms.items():
-            log_joint -= t.log_abs_det_jacobian(params_constrained[name], params[name])
+            log_joint -= get_log_abs_det_jacobian(
+                t, params_constrained[name], params[name]
+            )
         return log_joint
 
     def _lp_fn_jit(self, skip_jit_warnings, jit_options, params):

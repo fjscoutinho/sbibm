@@ -28,13 +28,13 @@ def c2st(
         n_folds: Number of folds
         z_score: Z-scoring using X
         noise_scale: If passed, will add Gaussian noise with std noise_scale to samples
-
+    
     References:
         [1]: https://scikit-learn.org/stable/modules/cross_validation.html
     """
     if z_score:
-        X_mean = torch.mean(X, dim=0)
-        X_std = torch.std(X, dim=0)
+        X_mean = torch.mean(X, axis=0)
+        X_std = torch.std(X, axis=0)
         X = (X - X_mean) / X_std
         Y = (Y - X_mean) / X_std
 
@@ -56,12 +56,7 @@ def c2st(
     )
 
     data = np.concatenate((X, Y))
-    target = np.concatenate(
-        (
-            np.zeros((X.shape[0],)),
-            np.ones((Y.shape[0],)),
-        )
-    )
+    target = np.concatenate((np.zeros((X.shape[0],)), np.ones((Y.shape[0],)),))
 
     shuffle = KFold(n_splits=n_folds, shuffle=True, random_state=seed)
     scores = cross_val_score(clf, data, target, cv=shuffle, scoring=scoring)
@@ -89,7 +84,7 @@ def c2st_auc(
         n_folds: Number of folds
         z_score: Z-scoring using X
         noise_scale: If passed, will add Gaussian noise with std noise_scale to samples
-
+    
     Returns:
         Metric
     """

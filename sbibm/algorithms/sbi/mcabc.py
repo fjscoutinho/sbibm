@@ -6,6 +6,8 @@ from sbi.inference import MCABC
 import sbibm
 from sbibm.tasks.task import Task
 from sbibm.utils.io import save_tensor_to_csv
+from sbibm.utils.kde import get_kde
+from .utils import get_sass_transform, run_lra
 
 
 def run(
@@ -64,7 +66,6 @@ def run(
 
     prior = task.get_prior_dist()
     simulator = task.get_simulator(max_calls=num_simulations)
-    kde = kde_bandwidth is not None
     if observation is None:
         observation = task.get_observation(num_observation)
 
@@ -83,35 +84,38 @@ def run(
         distance=distance,
         show_progress_bars=True,
     )
-    # Returns samples or kde posterior in output.
-    output, summary = inference_method(
+    samples, summary = inference_method(
         x_o=observation,
         num_simulations=num_simulations,
         eps=eps,
         quantile=quantile,
-        return_summary=True,
-        kde=kde,
-        kde_kwargs={"bandwidth": kde_bandwidth} if kde else {},
         lra=lra,
         sass=sass,
         sass_expansion_degree=sass_feature_expansion_degree,
         sass_fraction=sass_fraction,
+        return_summary=True,
     )
+
+    distances = summary["distances"]
 
     assert simulator.num_simulations == num_simulations
 
     if save_distances:
-        save_tensor_to_csv("distances.csv", summary["distances"])
+        save_tensor_to_csv("distances.csv", distances)
 
-    if kde:
-        kde_posterior = output
-        samples = kde_posterior.sample(num_samples)
+    if kde_bandwidth is not None:
+        log.info(
+            f"""KDE on {samples.shape[0]} samples with bandwidth option {kde_bandwidth}.
+            Beware that KDE can give unreliable results when used with too few samples
+            and in high dimensions."""
+        )
+        kde = get_kde(samples, bandwidth=kde_bandwidth)
 
-        # LPTP can only be returned with KDE posterior.
-        if num_observation is not None:
-            true_parameters = task.get_true_parameters(num_observation=num_observation)
-            log_prob_true_parameters = kde_posterior.log_prob(true_parameters)
-            return samples, simulator.num_simulations, log_prob_true_parameters
+        samples = kde.sample(num_samples)
+
+    if num_observation is not None and kde_bandwidth is not None:
+        true_parameters = task.get_true_parameters(num_observation=num_observation)
+        log_prob_true_parameters = kde.log_prob(true_parameters)
+        return samples, simulator.num_simulations, log_prob_true_parameters
     else:
-        samples = output
         return samples, simulator.num_simulations, None
