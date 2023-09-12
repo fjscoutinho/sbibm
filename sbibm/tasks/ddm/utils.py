@@ -19,8 +19,8 @@ from torch.utils import data
 from julia import Julia
 from warnings import warn
 
-# JULIA_PROJECT = str(Path(__file__).parent / "julia")
-JULIA_PROJECT = r"C:\Users\Filipe\AppData\Local\Programs\Julia-1.8.5\bin\julia.exe"
+JULIA_PROJECT = str(Path(__file__).parent / "julia")
+#JULIA_PROJECT = r"C:\Users\Filipe\AppData\Local\Programs\Julia-1.8.5\bin\julia.exe"
 os.environ["JULIA_PROJECT"] = JULIA_PROJECT
 
 
@@ -48,9 +48,9 @@ def find_sysimage():
 # initialize Julia
 jl = Julia(
     compiled_modules=False,
-    #sysimage=Path("C:\Users\Filipe\.julia")
-    #sysimage=find_sysimage(),
-    runtime=r"C:\Users\Filipe\AppData\Local\Programs\Julia-1.8.5\bin\julia.exe"
+    #sysimage=Path("C:\Users\Filipe\.julia"),
+    sysimage=find_sysimage()
+    #runtime=r"C:\Users\Filipe\AppData\Local\Programs\Julia-1.8.5\bin\julia.exe"
 )
 from julia import Main
 
