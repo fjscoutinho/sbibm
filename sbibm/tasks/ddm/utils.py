@@ -20,7 +20,7 @@ from julia import Julia
 from warnings import warn
 
 JULIA_PROJECT = str(Path(__file__).parent / "julia")
-#JULIA_PROJECT = r"C:\Users\Filipe\AppData\Local\Programs\Julia-1.8.5\bin\julia.exe"
+JULIA_PROJECT = r"/home/filipe/Documents/julia-1.9.3/bin/julia"
 os.environ["JULIA_PROJECT"] = JULIA_PROJECT
 
 
