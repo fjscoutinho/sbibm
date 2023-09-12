@@ -49,8 +49,8 @@ def find_sysimage():
 jl = Julia(
     compiled_modules=False,
     #sysimage=Path("C:\Users\Filipe\.julia"),
-    sysimage=find_sysimage()
-    #runtime=r"C:\Users\Filipe\AppData\Local\Programs\Julia-1.8.5\bin\julia.exe"
+    #sysimage=find_sysimage()
+    runtime=r"/home/filipe/Downloads/julia-1.9.3/bin/julia.exe"
 )
 from julia import Main
 
