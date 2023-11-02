@@ -22,6 +22,8 @@ class DDM(Task):
         dt: float = 0.001,
         num_trials: int = 1,
         dim_parameters: int = 4,
+        model: str = None,
+        experimental_conditions: Dict = None,
     ):
         """Drift-diffusion model.
 
@@ -33,7 +35,9 @@ class DDM(Task):
         """
         self.dt = dt
         self.num_trials = num_trials
-        assert dim_parameters in [2, 3, 4], "dim_parameters must be 2 or 3."
+        self.model = model
+        self.experimental_conditions = experimental_conditions
+        #assert dim_parameters in [2, 3, 4], "dim_parameters must be 2 or 3."
 
         num_trials_list = [1, 10, 100, 1000]
         observation_seeds = torch.arange(0, 103, 1)
@@ -157,6 +161,35 @@ class DDM(Task):
                 # encode zero choices as negative RTs.
                 rts[choices == 0] *= -1
                 return torch.tensor(rts, dtype=torch.float32)
+    
+        elif self.dim_parameters == 6 and self.model == "TiedDDM":
+
+            def simulator(parameters):
+                g, e, b, ndt, abl, ild = parameters.numpy().T
+
+                q_e = 1
+                T0 = 1/g
+                ABL_fun = (2*q_e/T0)*10**(e*abl/20)
+                Chi = 40/np.log(10)
+
+                drift_rate = ABL_fun*(1/Chi)*(e*ild)
+                sigma = np.sqrt(ABL_fun*q_e)
+
+                v = drift_rate/sigma
+                bl = -b/sigma
+                bu = b/sigma
+
+                rts, choices = self.ddm.simulate_simpleDDM(
+                    v,
+                    bl,
+                    bu,
+                    seed=seed,
+                    num_trials=self.num_trials,
+                )
+                rts += ndt.reshape(-1, 1)
+                # encode zero choices as negative RTs.
+                rts[choices == 0] *= -1
+                return torch.tensor(rts, dtype=torch.float32)
 
         else:
             raise NotImplementedError()
@@ -211,6 +244,61 @@ class DDM(Task):
             v, a, w, ndt = parameters.T
             bl = -w * a
             bu = (1 - w) * a
+            log_likelihoods = self.ddm.log_likelihood_simpleDDM(
+                v,
+                bl,
+                bu,
+                # Pass rts and choices separately.
+                rts,
+                choices,
+                # Pass ndt to be subtracted in Julia.
+                ndt=ndt,
+                l_lower_bound=l_lower_bound,
+            )
+        elif self.dim_parameters == 6 and self.model == "TiedDDM" and self.experimental_conditions is None:
+            g, e, b, ndt, abl, ild = parameters.T
+
+            q_e = 1
+            T0 = 1/g
+            ABL_fun = (2*q_e/T0)*10**(e*abl/20)
+            Chi = 40/np.log(10)
+
+            drift_rate = ABL_fun*(1/Chi)*(e*ild)
+            sigma = np.sqrt(ABL_fun*q_e)
+
+            v = drift_rate/sigma
+            bl = -b/sigma
+            bu = b/sigma
+
+            log_likelihoods = self.ddm.log_likelihood_simpleDDM(
+                v,
+                bl,
+                bu,
+                # Pass rts and choices separately.
+                rts,
+                choices,
+                # Pass ndt to be subtracted in Julia.
+                ndt=ndt,
+                l_lower_bound=l_lower_bound,
+            )
+        elif self.dim_parameters == 6 and self.model == "TiedDDM" and self.experimental_conditions is not None:
+            g, e, b, ndt = parameters.T
+
+            abl = self.experimental_conditions["abl"].numpy()
+            ild = self.experimental_conditions["ild"].numpy()
+
+            q_e = 1
+            T0 = 1/g
+            ABL_fun = (2*q_e/T0)*10**(e*abl/20)
+            Chi = 40/np.log(10)
+
+            drift_rate = ABL_fun*(1/Chi)*(e*ild)
+            sigma = np.sqrt(ABL_fun*q_e)
+
+            v = drift_rate/sigma
+            bl = -b/sigma
+            bu = b/sigma
+
             log_likelihoods = self.ddm.log_likelihood_simpleDDM(
                 v,
                 bl,
